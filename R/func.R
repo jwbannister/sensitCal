@@ -3,7 +3,7 @@
 #' 
 #' @param day Date. Single day for which sensit data should be pulled. 
 #' @return Data frame.
-summarize_sensit_day <- function(day=Sys.Date()-1){
+pull_sensit_day <- function(day=Sys.Date()-1){
     query <- paste0("SELECT i.deployment AS sensit, s.datetime, s.sumpc, ", 
                     "g.name AS group, a.area AS dca, ",
                     "flags.is_invalid(s.deployment_id, ",
