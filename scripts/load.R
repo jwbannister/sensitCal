@@ -45,7 +45,8 @@ yesterday_hourly <- pull_sensit_day()
 yesterday_hourly <- filter(yesterday_hourly, !invalid)
 yesterday_hourly$date <- 
     as.Date(substring(yesterday_hourly$datetime %m-% seconds(1), 1, 10))
-sensits_yesterday <- yesterday_hourly %>% group_by(sensit, date, group, dca) %>%
+sensits_yesterday <- yesterday_hourly %>% 
+    group_by(sensit, date, group, dca, met) %>%
     summarize(sumpc_total=sum(sumpc)) %>% ungroup() 
 sensits_yesterday[!(sensits_yesterday$group %in% c('SF Studies', 'TwB2')), ]$group <- 
     'Other Areas'
@@ -99,12 +100,28 @@ for (i in names(plots)){
         theme(legend.position='none') +
         ggtitle(names(plots[i]))
 }
-fl <- tempfile()
-png(file=fl, width=8, height=8, units="in", res=300) 
-gridExtra::grid.arrange(plots[[1]]$xy, plots[[2]]$xy, plots[[3]]$xy, 
-                        nrow=2)
-dev.off()
 
+query_m <- paste0("SELECT i.deployment, m.datetime, m.ws_10m, m.wd_10m ",
+                  "FROM met.met_1hour m JOIN instruments.deployments i ",
+                  "ON m.deployment_id=i.deployment_id ",
+                  "WHERE (m.datetime - '1 second'::interval)::date='",
+                  Sys.Date() - 1, "'::date;")
+met_df <- query_owens(query_m)
+query_m2 <- paste0("SELECT deployment, ",
+                   "st_x(st_transform(geom, 26911)) AS x, ",
+                   "st_y(st_transform(geom, 26911)) AS y ",
+                   "FROM instruments.deployments ",
+                   "WHERE deployment IN ('",
+                   paste(unique(met_df$deployment), collapse="', '"), "');")
+met_loc <- query_owens(query_m2)
+met_summary <- met_df %>% group_by(deployment) %>%
+    summarize(max_ws=max(ws_10m, na.rm=T), 
+              wd_max=wd_10m[which(ws_10m==max(ws_10m))]) %>%
+    left_join(met_loc, by="deployment")
+
+
+
+                  
 
 
     

@@ -5,7 +5,7 @@
 #' @return Data frame.
 pull_sensit_day <- function(day=Sys.Date()-1){
     query <- paste0("SELECT i.deployment AS sensit, s.datetime, s.sumpc, ", 
-                    "g.name AS group, a.area AS dca, ",
+                    "g.name AS group, a.area AS dca, i2.deployment AS met, ",
                     "flags.is_invalid(s.deployment_id, ",
                     "s.datetime - '01:00:00'::interval, ",
                     "s.datetime + '01:00:00'::interval) AS invalid ",
@@ -16,6 +16,10 @@ pull_sensit_day <- function(day=Sys.Date()-1){
                     "ON s.deployment_id = ig.deployment_id ",
                     "LEFT JOIN info.groups g ON ig.group_id = g.group_id ",
                     "LEFT JOIN instruments.areas a ON i.area_id = a.area_id ",
+                    "LEFT JOIN instruments.sensit_metstations sm ",
+                    "ON s.deployment_id=sm.sensit_deployment_id ",
+                    "LEFT JOIN instruments.deployments i2 ",
+                    "ON sm.met_deployment_id=i2.deployment_id ",
                     "WHERE (s.datetime -'1 second'::interval)::date='", 
                     day, "';") 
     df1 <- query_owens(query) 
