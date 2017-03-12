@@ -38,7 +38,8 @@ yesterday_hourly$date <-
     as.Date(substring(yesterday_hourly$datetime %m-% seconds(1), 1, 10))
 sensits_yesterday <- yesterday_hourly %>% 
     group_by(sensit, date, group, dca, met) %>%
-    summarize(sumpc_total=sum(sumpc)) %>% ungroup() 
+    summarize(sumpc_total=sum(sumpc)) %>% ungroup() %>%
+    filter(group!='LADWP Sand Flux Sites')
 sensits_yesterday[!(sensits_yesterday$group %in% c('SF Studies', 'TwB2')), ]$group <- 
     'Other Areas'
 sensits_yesterday$group <- factor(sensits_yesterday$group, ordered=T)
