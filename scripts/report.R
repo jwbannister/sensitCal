@@ -1,38 +1,23 @@
 source("~/code/sensitCal/scripts/model.R")
-load_all("~/code/owensMaps")
 library(tidyverse)
 library(ggplot2)
 library(gridExtra)
 
-# ADD IN FAKE EXCEEDANCES FOR EXAMPLE REPORT
-# REMOVE IN PRODUCTION
-yesterday_df[yesterday_df$sensit=='1602', ]$predict_count <- 9
-yesterday_df[yesterday_df$sensit=='1605', ]$predict_count <- 20
-yesterday_df[yesterday_df$sensit=='1606', ]$predict_count <- 25
-
 yesterday_df <- yesterday_df %>% left_join(site_locs, by="sensit") %>%
     left_join(select(met_summary, deployment, max_ws, wd_max), 
-              by=c("met"="deployment")) %>%
-# do not report SF Studies sites
-    filter(group!='SF Studies')
+              by=c("met"="deployment")) 
 yesterday_df$pred_mass <- round(yesterday_df$predict_count / 10, 1)
 
-# parse and format data for display
-day <- format(unique(yesterday_df$date), '%m-%d-%Y')
+# identify potential bad sensits
 yesterday_df$bad <- rep(F, nrow(yesterday_df))
 for (i in 1:nrow(yesterday_df)){
-    if (yesterday_df$group[i]!='TwB2'){
-        if (yesterday_df$pred_mass[i]>5 & yesterday_df$max_ws[i]<5){
-            yesterday_df$bad[i] <- T
-            yesterday_df$predict_prob[i] <- NA
-        } 
-    } else{
-        if (yesterday_df$pred_mass[i]>1 & yesterday_df$max_ws[i]<3){
-            yesterday_df$bad[i] <- T
-            yesterday_df$predict_prob[i] <- NA
-        }
-    }
+    if (yesterday_df$pred_mass[i]>10 & yesterday_df$max_ws[i]<5){
+        yesterday_df$bad[i] <- T
+        yesterday_df$predict_prob[i] <- NA
+    } 
 }
+
+# parse and format data for display
 yesterday_df$table_mass <- as.character(yesterday_df$pred_mass)
 for (i in 1:nrow(yesterday_df)){
 yesterday_df$table_mass[i] <- ifelse(yesterday_df$bad[i], 
@@ -51,74 +36,52 @@ yesterday_df$flag[i] <- ifelse(yesterday_df$pred_mass[i] >
 yesterday_df$over[i] <- yesterday_df$pred_mass[i] / yesterday_df$threshold[i]
 }
 
-table_sites <- yesterday_df %>% filter(flag) %>%
-    select(sensit, dca, table_mass)
-colnames(table_sites) <- c("Sensit", "DCA", "Estimated Flux (g/day)") 
+# build table of exceedance sites for display in LADWP report
+table_sites <- yesterday_df %>% filter(flag & !bad) %>%
+    select(sensit, dca, table_mass, group2)
+table_sites$group2 <- factor(table_sites$group2, ordered=T, 
+                             levels=c('TwB2', 'Brine', 'DWM', 'T1A-1', 
+                                      'Channel Area'))
+if (nrow(table_sites)>0){
+    plot_grob <- build_exceedance_table(table_sites)
+} 
 
-grob_theme <- ttheme_default(base_size=4, parse=T, 
-                             colhead=list(fg_params=list(parse=T)))
-t1 <- tableGrob(table_sites, theme=grob_theme, rows=NULL)
-title <- grid::textGrob("Sites Exceeding Sand Flux Limit",
-                        gp=grid::gpar(fontsize=6))
-padding <- unit(5,"mm")
-table_grob <- gtable::gtable_add_rows(t1, 
-                                      heights = grid::grobHeight(title) + padding, 
-                                      pos = 0)
-table_grob <- gtable::gtable_add_grob(table_grob, title, 1, 1, 1, 
-                                      ncol(table_grob))
-
-met_labels <- data.frame(label=rep(NA, nrow(met_summary)), 
-                         nudge_x=rep(0, nrow(met_summary)), 
-                         nudge_y=rep(0, nrow(met_summary)), 
-                         x=rep(NA, nrow(met_summary)), 
-                         y=rep(NA, nrow(met_summary)))
-for (i in 1:nrow(met_summary)){
-    met_labels$label[i] <- paste0("Met Station ", met_summary$deployment[i], 
-                                  "\n", "Max WS (m/s) = ", 
-                                  met_summary$max_ws[i]) 
-    met_labels$x[i] <- met_summary$x[i]
-    met_labels$y[i] <- met_summary$y[i]
+# build table of exceedance sites for display in AirSci report
+airsci_sites <- yesterday_df %>% filter(flag) %>%
+    select(sensit, dca, table_mass, group2)
+airsci_sites$group2 <- factor(airsci_sites$group2, ordered=T, 
+                             levels=c('TwB2', 'Brine', 'DWM', 'T1A-1', 
+                                      'Channel Area'))
+if (nrow(airsci_sites)>0){
+    airsci_grob <- build_exceedance_table(airsci_sites)
+} else{
+    airsci_grob <- grid::grid.rect(gp=grid::gpar(col='white'))
+    dev.off()
 }
 
-plot_sites <- filter(yesterday_df, sensit %in% table_sites$Sensit)
-p1 <- ggplot(shoreline$polygons, aes(x=x, y=y)) +
-    geom_path(mapping=aes(group=objectid)) +
-    geom_path(data=owens$polygons, mapping=aes(group=objectid), color="grey") +
-    coord_equal() +
-    geom_point(data=plot_sites, aes(color=over)) +
-#    geom_point(data=yesterday_df, shape=21, aes(fill=active)) +
-#    geom_point(data=filter(yesterday_df, predict_prob>0.5), 
-#               aes(color=predict_prob)) +
-    ggrepel::geom_label_repel(data=plot_sites, aes(label=sensit), size=2) +
-    scale_color_gradient(name="Percentage of Exceedance Limit", 
-                         breaks=c(1, 3, 5),
-                         limits=c(1, 5),
-                         labels=c('100%', '300%', '500%'),
-                         low='yellow', high='red', na.value="red") + 
-#    scale_fill_manual(name=NULL, values=c('grey', 'black')) +
-    guides(color=guide_colorbar(title.position='top', title.hjust=0.5, 
-                                direction="horizontal", order=2)) +
-    annotation_custom(table_grob, xmin=400000, xmax=405000, 
-                      ymin=4035000, ymax=4045000) +
-    xlim(400000, 425000) +
-    ggtitle(paste0("Owens Lake Sensit Notification System Report for ", day),
-            subtitle="Flux values are estimates only. Official sand flux results will be determined after monthly CSC mass collections") + 
-    theme(axis.line=element_blank(),
-          axis.text=element_blank(),
-          axis.ticks=element_blank(),
-          axis.title=element_blank(),
-          plot.title=element_text(hjust=0.5), 
-          plot.subtitle=element_text(hjust=0.5), 
-          panel.background=element_blank(),
-          panel.grid.major=element_blank(),
-          panel.grid.minor=element_blank(),
-          legend.title=element_text(size=8), 
-          legend.position=c(.05, .9), 
-          legend.justification=c(0, 1), 
-          plot.background = element_rect(color='black', fill=NA, size=0.5))
+met_labels <- build_met_labels()
 
-pdf(file="~/code/sensitCal/output/report.pdf", height=11, width=8.5, 
-    paper='letter')
-print(p1)
+if (nrow(table_sites)>0){
+    p_dwp <- plot_ladwp_report()
+    pdf(file=paste0("~/dropbox/owens/ladwp/", report_date, "_ladwp.pdf"), 
+        height=11, width=8.5, paper='letter')
+    print(p_dwp)
+    dev.off()
+}
+
+p_as <- plot_airsci_report()
+pdf(file=paste0("~/dropbox/owens/sensit_notify/airsci/daily_reports/", 
+                report_date, "_airsci.pdf"), 
+    height=11, width=8.5, paper='letter')
+print(p_as)
 dev.off()
+
+report_csv <- select(yesterday_df, sensit, date, group2, dca, sumpc_total, 
+                     predict_prob, pred_mass, max_ws, bad)
+write.csv(report_csv, row.names=F, 
+          file=paste0("~/dropbox/owens/sensit_notify/airsci/all_sensits/", 
+                      report_date, ".csv"))
+write.table(filter(report_csv, sensit %in% airsci_sites$sensit), 
+          file=paste0("~/dropbox/owens/sensit_notify/airsci/flag_sites.csv"), 
+          row.names=F, col.names=F, append=T, sep=",")
 

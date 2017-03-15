@@ -3,8 +3,8 @@ library(tidyverse)
 library(lubridate)
 library(ggplot2)
 
-poisson_list <- vector(mode="list", length=3)
-names(poisson_list) <- c('SF Studies', 'TwB2', 'Other Areas')
+poisson_list <- vector(mode="list", length=2)
+names(poisson_list) <- c('TwB2', 'Other Areas')
 lr_list <- poisson_list
 history_df <- c()
 yesterday_df <- c()
@@ -35,14 +35,15 @@ for (i in names(poisson_list)){
     yesterday_df <- rbind(yesterday_df, tmp2)
 }
 
-plots <- vector(mode="list", length=3)
-names(plots) <- c('SF Studies', 'TwB2', 'Other Areas')
-clrs <- c('SF Studies'='#e41a1c', 'TwB2'='#377eb8', 'Other Areas'='#4daf4a')
+plots <- vector(mode="list", length=2)
+names(plots) <- c('TwB2', 'Other Areas')
+clrs <- c('TwB2'='#377eb8', 'Other Areas'='#4daf4a')
 for (i in names(plots)){
-    plots[[i]]$dist <- history_df %>% filter(group==i) %>%
+        plot_data <- history_df %>% filter(group==i)
+    plots[[i]]$dist <- plot_data %>%
         ggplot(aes(x=dwp_mass_count)) +
         geom_density()
-    plots[[i]]$xy <-  history_df %>% filter(group==i) %>%
+    plots[[i]]$xy <-  plot_data %>%
         ggplot(aes(x=sumpc_total, y=dwp_mass_count)) +
         geom_point(aes(color=group)) +
         geom_point(mapping=aes(y=poisson_fitted_count)) +
