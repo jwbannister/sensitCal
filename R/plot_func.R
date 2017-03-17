@@ -50,7 +50,7 @@ plot_ladwp_report <- function(){
 #' 
 #' @return table grob
 build_exceedance_table <- function(sites){
-    grob_theme <- ttheme_default(base_size=6, parse=T, 
+    grob_theme <- gridExtra::ttheme_default(base_size=6, parse=T, 
                                  colhead=list(fg_params=list(parse=T)))
     padding <- unit(5,"mm")
     for (i in 1:(length(unique(sites$group2)))){
@@ -135,20 +135,17 @@ plot_airsci_report <- function(){
         xlim(400000, 425000) + 
         geom_spoke(data=met_summary, 
                    mapping=aes(angle=wd_max, radius=max_ws * 250, x=x, y=y), 
-                   color="lightblue", size=3, 
+                   color="royalblue", size=2, 
                    arrow=arrow(length=unit(3, "mm"))) +
         geom_label(data=met_labels, aes(label=label), size=3) +
-        geom_point(data=yesterday_df, shape=21, aes(fill=bad)) +
-        scale_fill_manual(name=NULL, values=c('grey', 'black'), 
-                          breaks=c(FALSE, TRUE), 
-                          labels=c("Active Site", "Potential Bad Site")) +
-        geom_point(data=filter(plot_sites, !bad), aes(color=over)) +
+        geom_point(data=filter(yesterday_df, !bad), aes(color=exceed_prob)) +
+        geom_point(data=filter(yesterday_df, bad), shape=21, aes(fill=bad)) +
         ggrepel::geom_label_repel(data=plot_sites, aes(label=sensit), size=2) +
-        scale_color_gradient(name="Percentage of Exceedance Limit", 
-                             breaks=c(1, 3, 5),
-                             limits=c(1, 5),
-                             labels=c('100%', '300%', '500%'),
-                             low='yellow', high='red', na.value="red") + 
+        scale_fill_manual(name=NULL, values=c('black'), breaks=c(TRUE), 
+                          labels=c("Potential Bad Site")) +
+        scale_color_gradient(name="Probability of Exceedance", 
+                             limits=c(0, 1), 
+                             low='darkgreen', high='red') + 
         guides(color=guide_colorbar(title.position='top', title.hjust=0.5, 
                                     direction="horizontal", order=2)) +
         annotation_custom(airsci_grob, xmin=400000, xmax=405000, 

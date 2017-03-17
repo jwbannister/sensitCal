@@ -2,8 +2,7 @@ load_all()
 library(tidyverse)
 library(lubridate)
 
-args <- commandArgs(trailingOnly=T)
-report_date <- if_else(is.na(args[1]), Sys.Date() - 1, as.Date(args[1]))
+report_date <- Sys.Date() - 1
 
 col_record <- pull_collections_active()
 col_dates <- col_record %>% group_by(group) %>%
