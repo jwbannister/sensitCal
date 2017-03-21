@@ -4,9 +4,8 @@ library(lubridate)
 library(gridExtra)
 library(grid)
 
-#args <- commandArgs(trailingOnly=T)
-#report_date <- if_else(is.na(args[1]), Sys.Date() - 1, as.Date(args[1]))
-report_date <- Sys.Date() - 1
+cl_args <- commandArgs(trailingOnly=T)
+report_date <- if_else(is.na(cl_args[1]), Sys.Date() - 1, as.Date(cl_args[1]))
 
 yesterday_hourly <- pull_sensit_day(day=report_date)
 yesterday_hourly <- filter(yesterday_hourly, !invalid)
