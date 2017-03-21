@@ -25,15 +25,17 @@ filter_data2$group2 <- filter_data2$group
 filter_data3 <- filter_data2
 filter_data3[filter_data3$group!='TwB2', ]$group <- 'Other Areas'
 filter_data3$group <- factor(filter_data3$group, ordered=T)
-# convert decimal masses into counts of 0.1g for use in Poisson regression
-filter_data3$dwp_mass_count <- filter_data3$dwp_mass * 10
+# convert mass to flux using cox opening area constant
+filter_data3$dwp_flux <- filter_data3$dwp_mass/1.2
+# convert decimal flux into counts of 0.1g for use in Poisson regression
+filter_data3$dwp_flux_count <- round(filter_data3$dwp_flux * 10, 0)
 # add T/F exceedence flag for logistic regression
-mass_threshold <- c('TwB2'=0.5, 'Other Areas'=5)
+flux_threshold <- c('TwB2'=0.5, 'Other Areas'=5)
 filter_data3$flag <- rep(NA, nrow(filter_data3))
 for (i in 1:nrow(filter_data3)){
-    thresh <- mass_threshold[[as.character(filter_data3$group[i])]]
+    thresh <- flux_threshold[[as.character(filter_data3$group[i])]]
     filter_data3$flag[i] <- 
-        if_else(filter_data3$dwp_mass[i]>thresh, T, F)
+        if_else(filter_data3$dwp_flux[i]>thresh, T, F)
 }
 
 predict_list <- vector(mode="list", length=length(unique(filter_data3$sensit)))
@@ -43,7 +45,7 @@ lm_summary <- data.frame(sensit=c(), n=c(), coeff=c(), st.err=c(),
 for (i in names(predict_list)){
     model_data <- filter_data3 %>% filter(sensit==i)
     # build linear regression models
-    predict_list[[i]] <- lm(dwp_mass ~ sumpc_total + 0, data=model_data) 
+    predict_list[[i]] <- lm(dwp_flux ~ sumpc_total + 0, data=model_data) 
     predict_list[[i]]$data <- cbind(model_data, 
                         "fitted"=predict_list[[i]]$fitted)
     lm_summary <- 
