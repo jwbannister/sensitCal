@@ -2,3 +2,5 @@
 .Rhistory
 .RData
 *.swp
+sensit-alert-emails.json
+.httr-oauth

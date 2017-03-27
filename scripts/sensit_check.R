@@ -1,11 +1,11 @@
-load_all()
 library(tidyverse)
 library(lubridate)
 library(gridExtra)
 library(grid)
-
 cl_args <- commandArgs(trailingOnly=T)
 report_date <- if_else(is.na(cl_args[1]), Sys.Date() - 1, as.Date(cl_args[1]))
+if (mday(report_date)==1) source("./scripts/collection_model.R")
+load_all()
 
 yesterday_hourly <- pull_sensit_day(day=report_date)
 yesterday_hourly <- filter(yesterday_hourly, !invalid)
@@ -34,7 +34,7 @@ met_summary <- met_df %>% group_by(deployment) %>%
     left_join(met_loc, by="deployment")
 
 yesterday_df <- c()
-for (i in names(predict_list)){
+for (i in intersect(unique(sensits_yesterday$sensit), names(predict_list))){
     # predicted flux on yesterday's data
     new_data <- sensits_yesterday %>% filter(sensit==i)
     grp <- unique(new_data$group) 

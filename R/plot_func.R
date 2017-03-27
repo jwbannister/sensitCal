@@ -57,9 +57,9 @@ build_exceedance_table <- function(sites){
         grp <- rev(unique(sites$group2))[i]
         thresh <- if_else(grp=='TwB2', "0.5", "5")
         tmp <- filter(sites, group2==grp) %>% select(-group2)
-        colnames(tmp) <- c("Sensit", "DCA", "Estimated Flux (g/day)") 
+        colnames(tmp) <- c("Sensit", "DCA", "Estimated Flux (g/cm^2/day)") 
         table_grob <- tableGrob(tmp, theme=grob_theme, rows=NULL)
-        header_grob <- grid::textGrob(paste0(grp, " (threshold = ", thresh, " g/day)"), 
+        header_grob <- grid::textGrob(paste0(grp, " (threshold = ", thresh, " g/cm^2/day)"), 
                                       gp=grid::gpar(fontsize=8), vjust=1)
         table_grob <- gtable::gtable_add_rows(table_grob, 
                                               heights = grid::grobHeight(header_grob) + padding, 
